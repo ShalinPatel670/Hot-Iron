@@ -54,10 +54,10 @@ export default function MyAccount() {
             <div>
               <label className="block text-sm text-white/60 mb-2">Preferred Currency</label>
               <select className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red">
-                <option>USD</option>
-                <option>EUR</option>
-                <option>GBP</option>
-                <option>CNY</option>
+                <option style={{ color: 'black' }}>USD</option>
+                <option style={{ color: 'black' }}>EUR</option>
+                <option style={{ color: 'black' }}>GBP</option>
+                <option style={{ color: 'black' }}>CNY</option>
               </select>
             </div>
             <button className="w-full bg-constructivist-red hover:bg-constructivist-red/90 text-off-white font-semibold py-2 px-4 rounded-lg transition-colors">

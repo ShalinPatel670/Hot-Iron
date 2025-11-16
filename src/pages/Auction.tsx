@@ -1,322 +1,483 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import PageShell from '../components/PageShell'
-import AuctionCard from '../components/AuctionCard'
-import Modal from '../components/Modal'
 import Pill from '../components/Pill'
-import { mockAuctions } from '../data/mockData'
-import { Auction } from '../types'
+import Skeleton from '../components/Skeleton'
+import Tag from '../components/Tag'
+import { backendClient } from '../lib/backendClient'
+import { AuctionRunRequest } from '../types'
 import { useNotifications } from '../context/NotificationContext'
+import { useAuctionData } from '../context/AuctionDataContext'
 
 export default function AuctionPage() {
   const { pushNotification } = useNotifications()
-  const [selectedAuction, setSelectedAuction] = useState<Auction | null>(mockAuctions[0] || null)
-  const [showBidModal, setShowBidModal] = useState(false)
-  const [filters, setFilters] = useState({
-    region: 'all',
-    product: 'all',
-    carbonClass: 'all',
-    greenOnly: false,
-  })
-  const [bidQuantity, setBidQuantity] = useState(1000)
-  const [bidPrice, setBidPrice] = useState(selectedAuction?.currentPrice || 850)
+  const { latestRun, setLatestRun } = useAuctionData()
+  
+  const [buyerAddress, setBuyerAddress] = useState('chicago, il')
+  const [useCoordinates, setUseCoordinates] = useState(false)
+  const [lat, setLat] = useState<number | ''>(41.8781)
+  const [lon, setLon] = useState<number | ''>(-87.6298)
+  const [quantityTons, setQuantityTons] = useState(10000)
+  const [timescale, setTimescale] = useState<'one-time' | 'monthly' | 'biannually' | 'annually'>('one-time')
+  const [greenOnly, setGreenOnly] = useState(false)
+  
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [backendConnected, setBackendConnected] = useState<boolean | null>(null)
+  const [revealedBidIndices, setRevealedBidIndices] = useState<Set<number>>(new Set())
+  const [showWinner, setShowWinner] = useState(false)
+  const [isRevealing, setIsRevealing] = useState(false)
+  const processedAuctionRef = useRef<string | null>(null)
+  const timeoutRefs = useRef<number[]>([])
 
-  const regions = ['US', 'EU', 'India', 'China', 'Other']
-  const products = ['Hot Rolled Coil (HRC)', 'Other']
-  const carbonClasses = ['Ultra-low', 'Low', 'Standard']
+  // Check backend connection on mount
+  useEffect(() => {
+    backendClient.healthCheck()
+      .then(() => setBackendConnected(true))
+      .catch(() => setBackendConnected(false))
+  }, [])
 
-  const filteredAuctions = mockAuctions.filter((auction) => {
-    if (filters.region !== 'all' && auction.region !== filters.region) return false
-    if (filters.product !== 'all' && auction.product !== filters.product) return false
-    if (filters.greenOnly) {
-      const improvement = ((auction.baselineCo2 - auction.co2Intensity) / auction.baselineCo2) * 100
-      if (improvement < 30) return false
+  // Recalculate sorted bids when latestRun changes
+  const sortedBids = useMemo(() => {
+    if (!latestRun) return []
+    const bids = greenOnly
+      ? latestRun.bids.filter((bid) => bid.is_eaf)
+      : latestRun.bids
+    return [...bids].sort((a, b) => a.net_price_per_ton - b.net_price_per_ton)
+  }, [latestRun, greenOnly])
+
+  // Progressive bid reveal effect
+  useEffect(() => {
+    if (!latestRun) return
+
+    // Create a unique ID for this auction run (using winner + total cost + filter state)
+    const auctionId = `${latestRun.winner.seller_name}-${latestRun.winner.net_total}-${greenOnly}`
+    
+    // Skip if we've already processed this auction
+    if (processedAuctionRef.current === auctionId) return
+
+    // Get sorted bids for this effect (don't depend on the memoized version)
+    const bids = greenOnly
+      ? latestRun.bids.filter((bid) => bid.is_eaf)
+      : latestRun.bids
+    const currentSortedBids = [...bids].sort((a, b) => a.net_price_per_ton - b.net_price_per_ton)
+    
+    if (currentSortedBids.length === 0) return
+
+    // Reset reveal state when new auction result comes in
+    setRevealedBidIndices(new Set())
+    setShowWinner(false)
+    setIsRevealing(true)
+
+    // Mark this auction as processed BEFORE starting timeouts
+    processedAuctionRef.current = auctionId
+
+    // Shuffle all bids randomly (including winner)
+    const shuffledBids = [...currentSortedBids].sort(() => Math.random() - 0.5)
+    
+    // Reveal bids one by one
+    let currentIndex = 0
+    const revealNext = () => {
+      if (currentIndex >= shuffledBids.length) {
+        // All bids revealed, show winner after a short delay
+        const timeout = setTimeout(() => {
+          setShowWinner(true)
+          setIsRevealing(false)
+        }, 500)
+        timeoutRefs.current.push(timeout)
+        return
+      }
+
+      // Find the original index of this bid in the sorted list
+      const bid = shuffledBids[currentIndex]
+      const originalIndex = currentSortedBids.findIndex(b => b.seller_name === bid.seller_name)
+      
+      if (originalIndex !== -1) {
+        setRevealedBidIndices(prev => new Set([...prev, originalIndex]))
+      }
+      
+      currentIndex++
+      
+      // Random delay between 1000ms and 2000ms before next bid
+      if (currentIndex < shuffledBids.length) {
+        const delay = 1000 + Math.random() * 1000
+        const timeout = setTimeout(revealNext, delay)
+        timeoutRefs.current.push(timeout)
+      } else {
+        // This was the last bid, show winner
+        const timeout = setTimeout(() => {
+          setShowWinner(true)
+          setIsRevealing(false)
+        }, 500)
+        timeoutRefs.current.push(timeout)
+      }
     }
-    return true
-  })
 
-  const handlePlaceBid = () => {
-    setShowBidModal(true)
-  }
+    // Start revealing after initial delay
+    const initialTimeout = setTimeout(revealNext, 500)
+    timeoutRefs.current.push(initialTimeout)
 
-  const handleConfirmBid = () => {
-    // In a real app, this would submit the bid
-    alert(`Bid placed: ${bidQuantity} tons at $${bidPrice}/ton`)
-    setShowBidModal(false)
+    // Cleanup function
+    return () => {
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout))
+      timeoutRefs.current = []
+    }
+  }, [latestRun, greenOnly])
 
-    // Push notification about bid placement
-    if (selectedAuction) {
+  const knownAddresses = [
+    'central us warehouse',
+    'chicago, il',
+    'pittsburgh, pa',
+  ]
+
+  const handleRunAuction = async () => {
+    setLoading(true)
+    setError(null)
+    
+    // Clear any existing timeouts and reset processed auction
+    timeoutRefs.current.forEach(timeout => clearTimeout(timeout))
+    timeoutRefs.current = []
+    processedAuctionRef.current = null
+    setRevealedBidIndices(new Set())
+    setShowWinner(false)
+    setIsRevealing(false)
+
+    try {
+      const request: AuctionRunRequest = {
+        quantity_tons: quantityTons,
+      }
+
+      if (useCoordinates && lat !== '' && lon !== '') {
+        request.lat = Number(lat)
+        request.lon = Number(lon)
+      } else {
+        request.buyer_address = buyerAddress
+      }
+
+      const result = await backendClient.runAuction(request)
+      setLatestRun(result)
+
+      // Push notification
       pushNotification({
         type: 'auction',
-        title: 'Bid placed successfully',
-        body: `Your bid of $${bidPrice.toLocaleString()}/ton for ${bidQuantity.toLocaleString()} tons has been placed on ${selectedAuction.title}.`,
-        severity: 'info',
+        title: 'Auction completed',
+        body: `${result.winner.seller_name} wins with net price $${result.winner.net_price_per_ton.toFixed(2)}/ton for total cost $${result.winner.net_total.toLocaleString()}`,
+        severity: 'success',
         channels: ['push'],
         entityRef: {
           type: 'auction',
-          id: selectedAuction.id,
-          name: selectedAuction.title,
+          id: 'latest',
+          name: 'Latest Auction Run',
         },
       })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to run auction'
+      setError(errorMessage)
+      pushNotification({
+        type: 'system',
+        title: 'Auction failed',
+        body: errorMessage,
+        severity: 'warning',
+        channels: ['push'],
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
-  const co2Saved = selectedAuction
-    ? ((selectedAuction.baselineCo2 - selectedAuction.co2Intensity) * bidQuantity).toFixed(0)
-    : 0
-  const totalCost = bidQuantity * bidPrice
-  const greenPremium = selectedAuction
-    ? ((bidPrice - 800) / 800 * 100).toFixed(1)
-    : '0'
-
   return (
     <PageShell>
-      {/* Filters */}
-      <div className="glass p-4 mb-6">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-white/60">Region:</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilters({ ...filters, region: 'all' })}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  filters.region === 'all'
-                    ? 'bg-constructivist-red/20 text-constructivist-red border border-constructivist-red/30'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                }`}
-              >
-                All
-              </button>
-              {regions.map((region) => (
-                <button
-                  key={region}
-                  onClick={() => setFilters({ ...filters, region })}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    filters.region === region
-                      ? 'bg-constructivist-red/20 text-constructivist-red border border-constructivist-red/30'
-                      : 'bg-white/5 text-white/70 hover:bg-white/10'
-                  }`}
-                >
-                  {region}
-                </button>
-              ))}
+      {/* Input Form */}
+      <div className="glass p-6 mb-6">
+        <h2 className="text-2xl font-bold text-off-white mb-6">Run Auction</h2>
+        
+        <div className="space-y-4">
+          {/* Address vs Coordinates Toggle */}
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                checked={!useCoordinates}
+                onChange={() => setUseCoordinates(false)}
+                className="w-4 h-4 text-constructivist-red focus:ring-constructivist-red"
+              />
+              <span className="text-sm text-white/70">Use Address</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                checked={useCoordinates}
+                onChange={() => setUseCoordinates(true)}
+                className="w-4 h-4 text-constructivist-red focus:ring-constructivist-red"
+              />
+              <span className="text-sm text-white/70">Use Coordinates</span>
+            </label>
+          </div>
+
+          {!useCoordinates ? (
+            <div>
+              <label className="block text-sm text-white/60 mb-2">
+                Buyer Warehouse Address
+              </label>
+              <input
+                type="text"
+                value={buyerAddress}
+                onChange={(e) => setBuyerAddress(e.target.value)}
+                placeholder="e.g., chicago, il"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
+              />
+              <div className="text-xs text-white/50 mt-1">
+                Known addresses: {knownAddresses.join(', ')}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Latitude</label>
+                <input
+                  type="number"
+                  value={lat}
+                  onChange={(e) => setLat(e.target.value === '' ? '' : Number(e.target.value))}
+                  step={0.0001}
+                  min={-90}
+                  max={90}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Longitude</label>
+                <input
+                  type="number"
+                  value={lon}
+                  onChange={(e) => setLon(e.target.value === '' ? '' : Number(e.target.value))}
+                  step={0.0001}
+                  min={-180}
+                  max={180}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm text-white/60 mb-2">
+              Quantity (tons)
+            </label>
+            <input
+              type="number"
+              value={quantityTons}
+              onChange={(e) => setQuantityTons(Number(e.target.value))}
+              min={100}
+              max={100000}
+              step={100}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
+            />
+            <div className="text-xs text-white/50 mt-1">
+              Range: 100 - 100,000 tons
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-white/60">Product:</span>
+          <div>
+            <label className="block text-sm text-white/60 mb-2">
+              Timescale
+            </label>
             <select
-              value={filters.product}
-              onChange={(e) => setFilters({ ...filters, product: e.target.value })}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
+              value={timescale}
+              onChange={(e) => setTimescale(e.target.value as 'one-time' | 'monthly' | 'biannually' | 'annually')}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
             >
-              <option value="all">All</option>
-              {products.map((product) => (
-                <option key={product} value={product}>
-                  {product}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-white/60">Carbon Class:</span>
-            <select
-              value={filters.carbonClass}
-              onChange={(e) => setFilters({ ...filters, carbonClass: e.target.value })}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
-            >
-              <option value="all">All</option>
-              {carbonClasses.map((cls) => (
-                <option key={cls} value={cls}>
-                  {cls}
-                </option>
-              ))}
+              <option value="one-time" style={{ color: 'black' }}>One-time</option>
+              <option value="monthly" style={{ color: 'black' }}>Monthly</option>
+              <option value="biannually" style={{ color: 'black' }}>Biannually</option>
+              <option value="annually" style={{ color: 'black' }}>Annually</option>
             </select>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={filters.greenOnly}
-              onChange={(e) => setFilters({ ...filters, greenOnly: e.target.checked })}
+              checked={greenOnly}
+              onChange={(e) => setGreenOnly(e.target.checked)}
               className="w-4 h-4 rounded bg-white/5 border-white/10 text-constructivist-red focus:ring-constructivist-red"
             />
-            <span className="text-sm text-white/70">Show only green-advantaged</span>
+            <span className="text-sm text-white/70">Show only green (EAF) sellers</span>
           </label>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
-        {/* Auction List */}
-        <div className="space-y-4">
-          {filteredAuctions.length === 0 ? (
-            <div className="glass p-12 text-center text-white/40">
-              No auctions match your filters.
+          {backendConnected === false && (
+            <div className="p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-yellow-300 mb-4">
+              <div className="font-semibold mb-1">Backend Not Connected</div>
+              <div className="text-sm">
+                Cannot reach the backend server. Please start it with:
+              </div>
+              <div className="text-xs font-mono mt-2 bg-black/20 p-2 rounded">
+                uvicorn backend.server:app --reload --port 8000
+              </div>
             </div>
-          ) : (
-            filteredAuctions.map((auction) => (
-              <AuctionCard
-                key={auction.id}
-                {...auction}
-                isSelected={selectedAuction?.id === auction.id}
-                onClick={() => {
-                  setSelectedAuction(auction)
-                  setBidPrice(auction.currentPrice)
-                }}
-              />
-            ))
           )}
+
+          {error && (
+            <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300">
+              <div className="font-semibold mb-1">Error</div>
+              <div className="text-sm">{error}</div>
+            </div>
+          )}
+
+          <button
+            onClick={handleRunAuction}
+            disabled={loading || (!useCoordinates && !buyerAddress) || (useCoordinates && (lat === '' || lon === ''))}
+            className="w-full bg-constructivist-red hover:bg-constructivist-red/90 disabled:bg-white/10 disabled:text-white/40 text-off-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
+          >
+            {loading ? 'Running Auction...' : 'Run Auction'}
+          </button>
         </div>
-
-        {/* Selected Auction Detail & Bid Panel */}
-        {selectedAuction && (
-          <div className="glass p-6 sticky top-6 h-fit">
-            <h2 className="text-2xl font-bold text-off-white mb-4">{selectedAuction.title}</h2>
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between">
-                <span className="text-white/60">Region:</span>
-                <span className="text-off-white font-medium">{selectedAuction.region}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Product:</span>
-                <span className="text-off-white font-medium">{selectedAuction.product}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Delivery Window:</span>
-                <span className="text-off-white font-medium">{selectedAuction.deliveryWindow}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Auction Type:</span>
-                <span className="text-off-white font-medium">{selectedAuction.auctionType}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 pt-6 mb-6">
-              <h3 className="text-lg font-bold text-off-white mb-4">Bid Simulator</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-white/60 mb-2">
-                    Quantity (tons)
-                  </label>
-                  <input
-                    type="number"
-                    value={bidQuantity}
-                    onChange={(e) => setBidQuantity(Number(e.target.value))}
-                    min={1}
-                    max={selectedAuction.volumeRemaining}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
-                  />
-                  <div className="text-xs text-white/50 mt-1">
-                    Max: {selectedAuction.volumeRemaining.toLocaleString()} tons
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-white/60 mb-2">
-                    Bid Price ($/ton)
-                  </label>
-                  <input
-                    type="number"
-                    value={bidPrice}
-                    onChange={(e) => setBidPrice(Number(e.target.value))}
-                    min={0}
-                    step={1}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-off-white focus:outline-none focus:ring-2 focus:ring-constructivist-red"
-                  />
-                  <div className="text-xs text-white/50 mt-1">
-                    Current clearing: ${selectedAuction.currentPrice.toLocaleString()}/ton
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-2 p-4 glass-strong rounded-lg">
-                <div className="flex justify-between">
-                  <span className="text-white/60">Total Cost:</span>
-                  <span className="text-xl font-bold text-off-white">
-                    ${totalCost.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">CO₂ Saved vs Grey:</span>
-                  <span className="text-lg font-semibold text-carbon-green">
-                    {co2Saved} kg
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Implied Green Premium:</span>
-                  <span className="text-lg font-semibold text-off-white">
-                    {greenPremium}%
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={handlePlaceBid}
-                className="w-full mt-6 bg-constructivist-red hover:bg-constructivist-red/90 text-off-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105"
-              >
-                Place Bid
-              </button>
-              <div className="mt-2 text-center">
-                <Pill variant="green">
-                  +{((selectedAuction.baselineCo2 - selectedAuction.co2Intensity) / selectedAuction.baselineCo2 * 100).toFixed(0)}% CO₂ improvement
-                </Pill>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Bid Confirmation Modal */}
-      <Modal
-        isOpen={showBidModal}
-        onClose={() => setShowBidModal(false)}
-        title="Confirm Bid"
-        footer={
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={() => setShowBidModal(false)}
-              className="px-4 py-2 glass text-white/80 hover:text-off-white rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmBid}
-              className="px-4 py-2 bg-constructivist-red hover:bg-constructivist-red/90 text-off-white font-semibold rounded-lg transition-colors"
-            >
-              Confirm Bid
-            </button>
+      {/* Results */}
+      {loading && (
+        <div className="glass p-6">
+          <Skeleton />
+        </div>
+      )}
+
+      {latestRun && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-6">
+          {/* Winner Summary */}
+          <div className="glass p-6 sticky top-6 h-fit">
+            <h3 className="text-xl font-bold text-off-white mb-4">
+              {showWinner ? 'Winner' : 'Waiting for bids...'}
+            </h3>
+            {latestRun.winner && showWinner && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-off-white">
+                    {latestRun.winner.seller_name}
+                  </span>
+                  {latestRun.winner.is_eaf && <Pill variant="green">EAF</Pill>}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Transport Mode:</span>
+                    <Tag variant="info">{latestRun.winner.transport_mode}</Tag>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Distance:</span>
+                    <span className="text-off-white">{latestRun.winner.distance_km.toFixed(0)} km</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Net Price/ton:</span>
+                    <span className="text-xl font-bold text-off-white">
+                      ${latestRun.winner.net_price_per_ton.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Total Cost:</span>
+                    <span className="text-xl font-bold text-off-white">
+                      ${latestRun.winner.net_total.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Volume Discount:</span>
+                    <span className="text-off-white">
+                      {(latestRun.winner.volume_discount_pct * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  {latestRun.winner.is_eaf && (
+                    <div className="flex justify-between">
+                      <span className="text-white/60">EAF Discount:</span>
+                      <span className="text-carbon-green">
+                        ${latestRun.winner.eaf_discount_total.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <div className="text-sm text-white/60 mb-2">CO₂ Impact</div>
+                  <div className="text-lg font-semibold text-carbon-green">
+                    {latestRun.winner.is_eaf ? 'Green Steel (EAF)' : 'Standard Steel'}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        }
-      >
-        <div className="space-y-4">
-          <div className="glass p-4 rounded-lg">
-            <h4 className="font-semibold text-off-white mb-3">Bid Details</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-white/60">Auction:</span>
-                <span className="text-off-white">{selectedAuction?.title}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Quantity:</span>
-                <span className="text-off-white">{bidQuantity.toLocaleString()} tons</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Bid Price:</span>
-                <span className="text-off-white">${bidPrice.toLocaleString()}/ton</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">Total Cost:</span>
-                <span className="text-off-white font-bold">${totalCost.toLocaleString()}</span>
+
+          {/* Bid Book Table */}
+          <div className="glass p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-off-white">All Bids</h3>
+              <div className="text-sm text-white/60">
+                {revealedBidIndices.size} / {sortedBids.length} bid{sortedBids.length !== 1 ? 's' : ''}
+                {isRevealing && (
+                  <span className="ml-2 text-carbon-green animate-pulse">●</span>
+                )}
               </div>
             </div>
-          </div>
-          <div className="text-xs text-white/50">
-            By placing this bid, you agree to the auction terms and conditions. This bid is binding once the auction closes.
+            {sortedBids.length === 0 ? (
+              <div className="text-center text-white/40 py-8">
+                No bids match your filters.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Header */}
+                <div className="grid grid-cols-6 gap-4 items-center text-xs text-white/60 pb-2 border-b border-white/10">
+                  <div>Seller</div>
+                  <div>Mode</div>
+                  <div>Distance</div>
+                  <div>Net Price/ton</div>
+                  <div>Total Cost</div>
+                  <div>Volume Disc.</div>
+                </div>
+                {/* Bids */}
+                {sortedBids.map((bid, index) => {
+                  const isRevealed = revealedBidIndices.has(index)
+                  return (
+                    <div
+                      key={`${bid.seller_name}-${index}`}
+                      className={`transition-all duration-500 ${
+                        isRevealed
+                          ? 'opacity-100 translate-y-0'
+                          : 'opacity-0 -translate-y-2 pointer-events-none'
+                      }`}
+                    >
+                      {isRevealed && (
+                        <div className="glass p-4 rounded-lg hover:bg-white/5 transition-colors">
+                          <div className="grid grid-cols-6 gap-4 items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-off-white">{bid.seller_name}</span>
+                              {bid.is_eaf && <Pill variant="green">EAF</Pill>}
+                            </div>
+                            <div>
+                              <Tag variant="info">{bid.transport_mode}</Tag>
+                            </div>
+                            <div className="text-white/60">{bid.distance_km.toFixed(0)} km</div>
+                            <div className="font-semibold text-off-white">
+                              ${bid.net_price_per_ton.toFixed(2)}/ton
+                            </div>
+                            <div className="font-semibold text-off-white">
+                              ${bid.net_total.toLocaleString()}
+                            </div>
+                            <div className="text-white/60">
+                              {(bid.volume_discount_pct * 100).toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
-      </Modal>
+      )}
+
+      {!latestRun && !loading && (
+        <div className="glass p-12 text-center text-white/40">
+          <div className="text-4xl mb-4">⚡</div>
+          <div className="text-lg font-medium mb-2">No auction run yet</div>
+          <div className="text-sm">Fill out the form above and click "Run Auction" to get started.</div>
+        </div>
+      )}
     </PageShell>
   )
 }
-

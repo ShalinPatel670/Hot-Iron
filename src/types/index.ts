@@ -86,3 +86,44 @@ export interface NotificationPreferences {
   lastUpdated?: string
 }
 
+// Backend API types
+export interface Seller {
+  name: string
+  location: { lat: number; lon: number }
+  msrp: number
+  base_cost: number
+  risk_aversion: number
+  is_eaf: boolean
+}
+
+export interface BidBreakdown {
+  seller_name: string
+  distance_km: number
+  transport_mode: 'truck' | 'rail' | 'ocean'
+  cost_per_ton: number
+  risk_buffer_per_ton: number
+  offer_price_per_ton: number
+  gross_total_undiscounted: number
+  volume_discount_pct: number
+  volume_discount_total: number
+  gross_total: number
+  is_eaf: boolean
+  eaf_discount_total: number
+  net_price_per_ton: number
+  net_total: number
+  quantity_tons: number
+}
+
+export interface AuctionRunResponse {
+  winner: BidBreakdown
+  bids: BidBreakdown[]
+  buyer_location: { lat: number; lon: number }
+}
+
+export interface AuctionRunRequest {
+  buyer_address?: string
+  lat?: number
+  lon?: number
+  quantity_tons: number
+}
+

@@ -20,30 +20,59 @@ This application blends **Russian Constructivism** (bold geometry, diagonals, st
 
 ## Tech Stack
 
-- **React 18** with TypeScript
-- **Vite** for build tooling
-- **Tailwind CSS** for styling
-- **React Router** for navigation
+- **Frontend:**
+  - React 18 with TypeScript
+  - Vite for build tooling
+  - Tailwind CSS for styling
+  - React Router for navigation
+
+- **Backend:**
+  - Python 3.8+
+  - FastAPI for REST API
+  - Pydantic for data validation
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ and npm/yarn/pnpm
+- Python 3.8+ (for backend)
 
-### Installation
+### Backend Setup
+
+1. Install Python dependencies:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+2. Start the backend server:
+```bash
+uvicorn backend.server:app --reload --port 8000
+```
+
+The API will be available at `http://localhost:8000`
+
+See `backend/README.md` for detailed API documentation.
+
+### Frontend Setup
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Start the development server:
+2. Create a `.env` file (optional, defaults to `http://localhost:8000`):
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+3. Start the development server:
 ```bash
 npm run dev
 ```
 
-3. Open your browser to `http://localhost:5173`
+4. Open your browser to `http://localhost:5173`
 
 ### Build for Production
 
@@ -56,45 +85,61 @@ The built files will be in the `dist` directory.
 ## Project Structure
 
 ```
-src/
-├── components/       # Reusable UI components
-│   ├── Layout.tsx
-│   ├── Sidebar.tsx
-│   ├── TopBar.tsx
-│   ├── PageShell.tsx
-│   ├── StatCard.tsx
-│   ├── AuctionCard.tsx
-│   ├── Table.tsx
-│   ├── Tag.tsx
-│   ├── Pill.tsx
-│   ├── ChartShell.tsx
-│   ├── Modal.tsx
-│   ├── Drawer.tsx
-│   └── Skeleton.tsx
-├── pages/           # Page components
-│   ├── Dashboard.tsx
-│   ├── Auction.tsx
-│   ├── MyOrders.tsx
-│   ├── Loans.tsx
-│   ├── Analytics.tsx
-│   └── MyAccount.tsx
-├── data/            # Mock data
-│   └── mockData.ts
-├── types/           # TypeScript type definitions
-│   └── index.ts
-├── App.tsx          # Main app component with routing
-├── main.tsx         # Entry point
-└── index.css        # Global styles and Tailwind directives
+├── backend/              # Python FastAPI backend
+│   ├── models.py        # Data models (Point, Seller, Bid)
+│   ├── auction.py       # Auction logic
+│   ├── server.py        # FastAPI application
+│   └── requirements.txt # Python dependencies
+├── src/
+│   ├── components/       # Reusable UI components
+│   ├── pages/           # Page components
+│   ├── context/         # React contexts (Notifications, AuctionData)
+│   ├── lib/             # API client and utilities
+│   ├── types/           # TypeScript type definitions
+│   ├── data/            # Mock data (legacy)
+│   ├── App.tsx          # Main app component with routing
+│   └── main.tsx         # Entry point
+└── pricingformula.py    # Original pricing logic (legacy)
 ```
 
 ## Features
 
-- **Dashboard:** Overview of cost vs carbon position with KPIs and recent activity
-- **Auction:** Browse and bid on green steel auctions with bid simulator
-- **My Orders:** Track executed purchases with detailed order information
-- **Loans:** View trade finance options linked to orders and auctions
-- **Analytics:** Historical and scenario analysis with export capabilities
+- **Dashboard:** Overview of cost vs carbon position with KPIs and recent activity from auction runs
+- **Auction:** Run reverse auctions with buyer location and quantity inputs. View winner and full bid book
+- **My Orders:** Track executed purchases derived from auction results with detailed order information
+- **Loans:** View trade finance options linked to auction results
+- **Analytics:** Historical analysis of CO₂ savings and green premium metrics from auction history
 - **My Account:** Organization profile, team management, and notification settings
+
+## Backend Integration
+
+The frontend communicates with the FastAPI backend to:
+- Run reverse auctions with buyer location and quantity
+- Retrieve seller information
+- Get detailed bid breakdowns including transport modes, discounts, and pricing
+
+### Known Addresses
+
+The backend geocoder supports these demo addresses:
+- "central us warehouse" (Chicago)
+- "chicago, il"
+- "pittsburgh, pa"
+
+Or provide latitude/longitude coordinates directly.
+
+### API Endpoints
+
+- `GET /health` - Health check
+- `GET /sellers` - List available sellers
+- `POST /auction/run` - Run reverse auction with request body:
+  ```json
+  {
+    "buyer_address": "chicago, il",  // Optional
+    "lat": 41.8781,                  // Optional
+    "lon": -87.6298,                 // Optional
+    "quantity_tons": 10000
+  }
+  ```
 
 ## Responsive Design
 
@@ -110,7 +155,13 @@ Modern browsers that support:
 - CSS Grid and Flexbox
 - CSS backdrop-filter (for glassmorphism effects)
 
+## Development Notes
+
+- Auction results are persisted in localStorage for demo continuity
+- Orders are automatically created from successful auction runs
+- Analytics metrics are computed from auction history
+- Loan recommendations are generated based on latest auction results
+
 ## License
 
-This project is a demo application with mock data. No backend is included.
-
+This project is a demo application.

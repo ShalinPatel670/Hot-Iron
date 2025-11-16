@@ -7,21 +7,24 @@ import Loans from './pages/Loans'
 import Analytics from './pages/Analytics'
 import MyAccount from './pages/MyAccount'
 import { NotificationProvider } from './context/NotificationContext'
+import { AuctionDataProvider } from './context/AuctionDataContext'
 
 function App() {
   return (
     <BrowserRouter>
       <NotificationProvider>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/auction" element={<AuctionPage />} />
-            <Route path="/orders" element={<MyOrders />} />
-            <Route path="/loans" element={<Loans />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/account" element={<MyAccount />} />
-          </Routes>
-        </Layout>
+        <AuctionDataProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/auction" element={<AuctionPage />} />
+              <Route path="/orders" element={<MyOrders />} />
+              <Route path="/loans" element={<Loans />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/account" element={<MyAccount />} />
+            </Routes>
+          </Layout>
+        </AuctionDataProvider>
       </NotificationProvider>
     </BrowserRouter>
   )
