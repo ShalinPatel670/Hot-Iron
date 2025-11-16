@@ -58,3 +58,31 @@ export interface AnalyticsData {
   regionalBreakdown: { region: string; volume: number; co2Intensity: number }[]
 }
 
+export type NotificationType = 'auction' | 'order' | 'loan' | 'system'
+export type NotificationSeverity = 'critical' | 'info' | 'success' | 'warning'
+export type NotificationChannel = 'email' | 'sms' | 'push'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  body: string
+  severity: NotificationSeverity
+  channels: NotificationChannel[]
+  entityRef?: {
+    type: 'auction' | 'order' | 'loan'
+    id: string
+    name: string
+  }
+  timestamp: string
+  readAt?: string
+}
+
+export interface NotificationPreferences {
+  email: boolean
+  sms: boolean
+  push: boolean
+  digestMode: boolean
+  lastUpdated?: string
+}
+

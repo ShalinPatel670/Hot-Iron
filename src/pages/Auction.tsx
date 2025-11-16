@@ -5,8 +5,10 @@ import Modal from '../components/Modal'
 import Pill from '../components/Pill'
 import { mockAuctions } from '../data/mockData'
 import { Auction } from '../types'
+import { useNotifications } from '../context/NotificationContext'
 
 export default function AuctionPage() {
+  const { pushNotification } = useNotifications()
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(mockAuctions[0] || null)
   const [showBidModal, setShowBidModal] = useState(false)
   const [filters, setFilters] = useState({
@@ -40,6 +42,22 @@ export default function AuctionPage() {
     // In a real app, this would submit the bid
     alert(`Bid placed: ${bidQuantity} tons at $${bidPrice}/ton`)
     setShowBidModal(false)
+
+    // Push notification about bid placement
+    if (selectedAuction) {
+      pushNotification({
+        type: 'auction',
+        title: 'Bid placed successfully',
+        body: `Your bid of $${bidPrice.toLocaleString()}/ton for ${bidQuantity.toLocaleString()} tons has been placed on ${selectedAuction.title}.`,
+        severity: 'info',
+        channels: ['push'],
+        entityRef: {
+          type: 'auction',
+          id: selectedAuction.id,
+          name: selectedAuction.title,
+        },
+      })
+    }
   }
 
   const co2Saved = selectedAuction

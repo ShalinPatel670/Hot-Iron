@@ -1,23 +1,14 @@
 import { useState } from 'react'
 import PageShell from '../components/PageShell'
-import StatCard from '../components/StatCard'
 import ChartShell from '../components/ChartShell'
 import AuctionCard from '../components/AuctionCard'
 import Table from '../components/Table'
 import Tag from '../components/Tag'
-import { mockAuctions, mockActivities, mockOrders } from '../data/mockData'
+import { mockAuctions, mockActivities } from '../data/mockData'
 import { Activity } from '../types'
 
 export default function Dashboard() {
   const [activeChartTab, setActiveChartTab] = useState('cost')
-
-  // Calculate stats from mock data
-  const blendedCost = 865
-  const co2Intensity = 0.7
-  const baselineCo2 = 1.9
-  const co2VsBaseline = ((baselineCo2 - co2Intensity) / baselineCo2) * 100
-  const totalGreenVolume = mockOrders.reduce((sum, order) => sum + (order.volume * order.greenShare / 100), 0)
-  const activeAuctionsCount = mockAuctions.length
 
   const activityColumns = [
     { key: 'title', header: 'Activity' },
@@ -42,48 +33,6 @@ export default function Dashboard() {
 
   return (
     <PageShell>
-      {/* Stats Grid - 12 column grid, 4 cards each spanning 3 columns */}
-      <div className="grid grid-cols-12 gap-6 mb-8">
-        <div className="col-span-12 md:col-span-6 lg:col-span-3">
-          <StatCard
-            label="BLENDED STEEL COST"
-            value={blendedCost}
-            unit="$/ton"
-            trend="up"
-            trendValue="+2.3% vs last month"
-            accent="neutral"
-          />
-        </div>
-        <div className="col-span-12 md:col-span-6 lg:col-span-3">
-          <StatCard
-            label="CO₂ INTENSITY VS BASELINE"
-            value={co2Intensity.toFixed(1)}
-            unit="kg CO₂/ton"
-            trend="down"
-            trendValue={`${co2VsBaseline.toFixed(0)}% better`}
-            accent="green"
-          />
-        </div>
-        <div className="col-span-12 md:col-span-6 lg:col-span-3">
-          <StatCard
-            label="TOTAL GREEN VOLUME SECURED"
-            value={(totalGreenVolume / 1000).toFixed(0)}
-            unit="k tons"
-            trend="up"
-            trendValue="+15% this quarter"
-            accent="green"
-          />
-        </div>
-        <div className="col-span-12 md:col-span-6 lg:col-span-3">
-          <StatCard
-            label="ACTIVE AUCTIONS"
-            value={activeAuctionsCount}
-            trend="neutral"
-            accent="red"
-          />
-        </div>
-      </div>
-
       {/* Middle Section - Portfolio chart spans 7-8 cols, Auction Exposure spans 4-5 cols */}
       <div className="grid grid-cols-12 gap-6 mb-8">
         {/* Portfolio Chart */}

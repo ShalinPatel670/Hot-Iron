@@ -1,4 +1,4 @@
-import { Auction, Order, Loan, Activity, AnalyticsData } from '../types'
+import { Auction, Order, Loan, Activity, AnalyticsData, Notification, NotificationSeverity, NotificationChannel } from '../types'
 
 export const mockAuctions: Auction[] = [
   {
@@ -158,5 +158,116 @@ export const mockAnalytics: AnalyticsData = {
     { region: 'EU', volume: 5000, co2Intensity: 0.4 },
     { region: 'India', volume: 0, co2Intensity: 0 },
   ],
+}
+
+export const mockNotifications: Notification[] = [
+  {
+    id: 'NOTIF-001',
+    type: 'auction',
+    title: 'New auction ending soon',
+    body: 'US HRC – EAF, Q2 Delivery auction closes in 3 days. Current price: $850/ton',
+    severity: 'critical',
+    channels: ['email', 'push'],
+    entityRef: {
+      type: 'auction',
+      id: '1',
+      name: 'US HRC – EAF, Q2 Delivery',
+    },
+    timestamp: '2024-02-12T10:30:00Z',
+  },
+  {
+    id: 'NOTIF-002',
+    type: 'order',
+    title: 'Order settled',
+    body: 'Order ORD-002 has been settled successfully. 5,000 tons of HRC from EcoMetal EU.',
+    severity: 'success',
+    channels: ['email', 'push'],
+    entityRef: {
+      type: 'order',
+      id: 'ORD-002',
+      name: 'Order ORD-002',
+    },
+    timestamp: '2024-02-01T14:20:00Z',
+    readAt: '2024-02-01T15:00:00Z',
+  },
+  {
+    id: 'NOTIF-003',
+    type: 'loan',
+    title: 'Loan application pending',
+    body: 'Your loan application LOAN-001 is pending review from Sustainable Finance Bank.',
+    severity: 'warning',
+    channels: ['email'],
+    entityRef: {
+      type: 'loan',
+      id: 'LOAN-001',
+      name: 'Loan LOAN-001',
+    },
+    timestamp: '2024-02-10T09:15:00Z',
+  },
+  {
+    id: 'NOTIF-004',
+    type: 'auction',
+    title: 'Bid placed successfully',
+    body: 'Your bid of $850/ton for 1,000 tons has been placed on US HRC – EAF, Q2 Delivery.',
+    severity: 'info',
+    channels: ['push'],
+    entityRef: {
+      type: 'auction',
+      id: '1',
+      name: 'US HRC – EAF, Q2 Delivery',
+    },
+    timestamp: '2024-02-12T10:30:00Z',
+  },
+  {
+    id: 'NOTIF-005',
+    type: 'order',
+    title: 'Order in transit',
+    body: 'Order ORD-002 is now in transit. Expected delivery: Q2 2024.',
+    severity: 'info',
+    channels: ['email', 'push'],
+    entityRef: {
+      type: 'order',
+      id: 'ORD-002',
+      name: 'Order ORD-002',
+    },
+    timestamp: '2024-02-02T08:00:00Z',
+  },
+  {
+    id: 'NOTIF-006',
+    type: 'system',
+    title: 'System maintenance scheduled',
+    body: 'Scheduled maintenance will occur on March 15, 2024 from 2:00 AM to 4:00 AM UTC.',
+    severity: 'info',
+    channels: ['email'],
+    timestamp: '2024-02-10T12:00:00Z',
+    readAt: '2024-02-10T12:30:00Z',
+  },
+]
+
+export function activitiesToNotifications(activities: Activity[]): Notification[] {
+  return activities.map((activity) => {
+    const severityMap: Record<string, NotificationSeverity> = {
+      'LIVE AUCTION': 'critical',
+      'ORDER SETTLED': 'success',
+      'LOAN PENDING': 'warning',
+    }
+
+    const channelMap: Record<string, NotificationChannel[]> = {
+      'LIVE AUCTION': ['email', 'push'],
+      'ORDER SETTLED': ['email', 'push'],
+      'LOAN PENDING': ['email'],
+    }
+
+    return {
+      id: `NOTIF-${activity.id}`,
+      type: activity.type,
+      title: activity.title,
+      body: activity.title,
+      severity: severityMap[activity.status] || 'info',
+      channels: channelMap[activity.status] || ['push'],
+      entityRef: activity.metadata?.entityRef,
+      timestamp: activity.timestamp,
+    }
+  })
 }
 

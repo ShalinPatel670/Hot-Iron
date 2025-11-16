@@ -24,7 +24,7 @@ export default function MyOrders() {
     return true
   })
 
-  const statusVariantMap: Record<string, 'default' | 'success' | 'warning' | 'error'> = {
+  const statusVariantMap: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     'Settled': 'success',
     'Pending': 'warning',
     'In transit': 'info',

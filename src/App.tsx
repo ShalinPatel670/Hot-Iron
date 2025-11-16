@@ -6,20 +6,23 @@ import MyOrders from './pages/MyOrders'
 import Loans from './pages/Loans'
 import Analytics from './pages/Analytics'
 import MyAccount from './pages/MyAccount'
+import { NotificationProvider } from './context/NotificationContext'
 
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/auction" element={<AuctionPage />} />
-          <Route path="/orders" element={<MyOrders />} />
-          <Route path="/loans" element={<Loans />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/account" element={<MyAccount />} />
-        </Routes>
-      </Layout>
+      <NotificationProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/auction" element={<AuctionPage />} />
+            <Route path="/orders" element={<MyOrders />} />
+            <Route path="/loans" element={<Loans />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/account" element={<MyAccount />} />
+          </Routes>
+        </Layout>
+      </NotificationProvider>
     </BrowserRouter>
   )
 }

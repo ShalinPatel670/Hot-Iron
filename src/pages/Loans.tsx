@@ -4,8 +4,10 @@ import Tag from '../components/Tag'
 import ChartShell from '../components/ChartShell'
 import { mockLoans } from '../data/mockData'
 import { Loan } from '../types'
+import { useNotifications } from '../context/NotificationContext'
 
 export default function Loans() {
+  const { pushNotification } = useNotifications()
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(mockLoans[0] || null)
 
   return (
@@ -118,10 +120,48 @@ export default function Loans() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <button className="w-full glass p-3 rounded-lg text-off-white hover:bg-white/10 transition-colors">
+              <button
+                onClick={() => {
+                  if (selectedLoan) {
+                    pushNotification({
+                      type: 'loan',
+                      title: 'Term sheet requested',
+                      body: `Your request for a term sheet from ${selectedLoan.lenderName} has been submitted. You will receive it within 24 hours.`,
+                      severity: 'info',
+                      channels: ['email', 'push'],
+                      entityRef: {
+                        type: 'loan',
+                        id: selectedLoan.id,
+                        name: selectedLoan.lenderName,
+                      },
+                    })
+                    alert('Term sheet request submitted')
+                  }
+                }}
+                className="w-full glass p-3 rounded-lg text-off-white hover:bg-white/10 transition-colors"
+              >
                 Request Term Sheet
               </button>
-              <button className="w-full bg-constructivist-red hover:bg-constructivist-red/90 text-off-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105">
+              <button
+                onClick={() => {
+                  if (selectedLoan) {
+                    pushNotification({
+                      type: 'loan',
+                      title: 'Loan offer accepted',
+                      body: `You have accepted the loan offer from ${selectedLoan.lenderName}. The loan will be processed within 2-3 business days.`,
+                      severity: 'success',
+                      channels: ['email', 'push'],
+                      entityRef: {
+                        type: 'loan',
+                        id: selectedLoan.id,
+                        name: selectedLoan.lenderName,
+                      },
+                    })
+                    alert('Loan offer accepted')
+                  }
+                }}
+                className="w-full bg-constructivist-red hover:bg-constructivist-red/90 text-off-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105"
+              >
                 Accept Offer
               </button>
             </div>

@@ -1,13 +1,9 @@
-import { useState } from 'react'
 import PageShell from '../components/PageShell'
 import Tag from '../components/Tag'
+import { useNotifications } from '../context/NotificationContext'
 
 export default function MyAccount() {
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: false,
-    push: true,
-  })
+  const { preferences, setPreferences, pushNotification } = useNotifications()
 
   const teamMembers = [
     { id: '1', name: 'John Doe', email: 'john@acmesteel.com', role: 'Admin' },
@@ -15,7 +11,7 @@ export default function MyAccount() {
     { id: '3', name: 'Bob Johnson', email: 'bob@acmesteel.com', role: 'Viewer' },
   ]
 
-  const roleVariantMap: Record<string, 'default' | 'success' | 'warning' | 'error'> = {
+  const roleVariantMap: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     'Admin': 'error',
     'Trader': 'warning',
     'Viewer': 'info',
@@ -23,10 +19,6 @@ export default function MyAccount() {
 
   return (
     <PageShell>
-      <div className="mb-6">
-        <h1 className="page-title mb-2">My Account</h1>
-        <p className="text-white/60">Manage your organization profile and settings</p>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Organization Profile */}
@@ -100,13 +92,20 @@ export default function MyAccount() {
 
         {/* Notification Preferences */}
         <div className="glass p-6 lg:col-span-2">
-          <h2 className="text-xl font-bold text-off-white mb-6">Notification Preferences</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-off-white">Notification Preferences</h2>
+            {preferences.lastUpdated && (
+              <span className="text-xs text-white/40">
+                Last updated: {new Date(preferences.lastUpdated).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <label className="flex items-center gap-3 cursor-pointer glass-strong p-4 rounded-lg hover:bg-white/5 transition-colors">
               <input
                 type="checkbox"
-                checked={notifications.email}
-                onChange={(e) => setNotifications({ ...notifications, email: e.target.checked })}
+                checked={preferences.email}
+                onChange={(e) => setPreferences({ email: e.target.checked })}
                 className="w-5 h-5 rounded bg-white/5 border-white/10 text-constructivist-red focus:ring-constructivist-red"
               />
               <div>
@@ -117,8 +116,8 @@ export default function MyAccount() {
             <label className="flex items-center gap-3 cursor-pointer glass-strong p-4 rounded-lg hover:bg-white/5 transition-colors">
               <input
                 type="checkbox"
-                checked={notifications.sms}
-                onChange={(e) => setNotifications({ ...notifications, sms: e.target.checked })}
+                checked={preferences.sms}
+                onChange={(e) => setPreferences({ sms: e.target.checked })}
                 className="w-5 h-5 rounded bg-white/5 border-white/10 text-constructivist-red focus:ring-constructivist-red"
               />
               <div>
@@ -129,8 +128,8 @@ export default function MyAccount() {
             <label className="flex items-center gap-3 cursor-pointer glass-strong p-4 rounded-lg hover:bg-white/5 transition-colors">
               <input
                 type="checkbox"
-                checked={notifications.push}
-                onChange={(e) => setNotifications({ ...notifications, push: e.target.checked })}
+                checked={preferences.push}
+                onChange={(e) => setPreferences({ push: e.target.checked })}
                 className="w-5 h-5 rounded bg-white/5 border-white/10 text-constructivist-red focus:ring-constructivist-red"
               />
               <div>
@@ -138,6 +137,39 @@ export default function MyAccount() {
                 <div className="text-sm text-white/60">Receive push notifications</div>
               </div>
             </label>
+          </div>
+          <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preferences.digestMode}
+                onChange={(e) => setPreferences({ digestMode: e.target.checked })}
+                className="w-5 h-5 rounded bg-white/5 border-white/10 text-constructivist-red focus:ring-constructivist-red"
+              />
+              <div>
+                <div className="font-semibold text-off-white">Digest Mode</div>
+                <div className="text-sm text-white/60">Receive notifications in daily digest</div>
+              </div>
+            </label>
+            <button
+              onClick={() => {
+                pushNotification({
+                  type: 'system',
+                  title: 'Test Notification',
+                  body: 'This is a test notification to verify your notification preferences are working correctly.',
+                  severity: 'info',
+                  channels: ['email', 'sms', 'push'].filter((ch) => {
+                    if (ch === 'email') return preferences.email
+                    if (ch === 'sms') return preferences.sms
+                    if (ch === 'push') return preferences.push
+                    return false
+                  }) as ('email' | 'sms' | 'push')[],
+                })
+              }}
+              className="ml-auto px-4 py-2 bg-white/5 hover:bg-white/10 text-off-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Send Test Notification
+            </button>
           </div>
         </div>
       </div>

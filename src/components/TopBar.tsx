@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import NotificationBell from './notifications/NotificationBell'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -38,12 +38,9 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
         </div>
       </div>
 
-      {/* Right: Target badge + User info */}
+      {/* Right: Notifications + User info */}
       <div className="flex items-center gap-4">
-        <button className="text-secondary-text hover:text-neutral-text console-transition relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-constructivist-red rounded-full"></span>
-        </button>
+        <NotificationBell />
         <div className="flex items-center gap-2 px-3 py-1.5 glass rounded-lg">
           <div className="hidden sm:block text-right mr-2">
             <div className="text-sm font-medium text-neutral-text">Acme Steel Corp</div>
