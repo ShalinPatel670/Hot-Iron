@@ -14,7 +14,6 @@ export default function StatCard({
   unit,
   trend,
   trendValue,
-  accent = 'neutral',
   className = '',
 }: StatCardProps) {
   const trendIcon =

@@ -51,16 +51,6 @@ export default function Dashboard() {
     },
   ]
 
-  // Calculate stats from latest run
-  const totalCo2Saved = useMemo(() => {
-    if (!latestRun) return 0
-    return calculateCo2Savings(latestRun.winner.quantity_tons, latestRun.winner.is_eaf)
-  }, [latestRun])
-
-  const totalSpend = useMemo(() => {
-    return auctionHistory.reduce((sum, run) => sum + run.winner.net_total, 0)
-  }, [auctionHistory])
-
   // Prepare chart data from auction history
   const chartData = useMemo(() => {
     if (auctionHistory.length === 0) return []

@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { Notification, NotificationPreferences, NotificationChannel } from '../types'
+import { Notification, NotificationPreferences } from '../types'
 import { mockNotifications, mockActivities, activitiesToNotifications } from '../data/mockData'
 
 const STORAGE_KEY_NOTIFICATIONS = 'hot-iron-notifications'

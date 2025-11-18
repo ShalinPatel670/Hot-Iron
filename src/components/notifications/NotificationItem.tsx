@@ -12,13 +12,6 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const { markRead, dismiss } = useNotifications()
   const isRead = !!notification.readAt
 
-  const severityColors = {
-    critical: 'text-constructivist-red',
-    success: 'text-carbon-green',
-    warning: 'text-yellow-400',
-    info: 'text-white/60',
-  }
-
   const severityVariants: Record<string, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
     critical: 'error',
     success: 'success',

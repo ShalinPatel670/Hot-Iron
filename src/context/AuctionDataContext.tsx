@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { AuctionRunResponse, BidBreakdown } from '../types'
-import { backendClient } from '../lib/backendClient'
+import { AuctionRunResponse } from '../types'
 
 const STORAGE_KEY_AUCTION_DATA = 'hot-iron-auction-data'
 
