@@ -1,4 +1,4 @@
-**Hot Iron**
+**Hot Iron ([View Slide Deck]([url](https://tinyurl.com/4fteakhc)))**
 
 A market-design platform for auctioning green-steel production capacity and converting low volatility into cheaper financing.
 
