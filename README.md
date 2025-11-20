@@ -41,13 +41,3 @@ Green steel exhibits significantly lower spot and futures volatility compared to
 Lower volatility reduces perceived credit risk, which reduces the cost of debt.
 
 We convert this into explicit savings for buyers.
-
-
-**4. Repository Structure**
-hot-iron/
-  models/       quantitative models for volatility, financing, and debt-per-ton
-  auctions/     auction logic and clearing mechanisms
-  data/         pricing history and synthetic supplier-buyer profiles
-  notebooks/    exploratory analysis and simulation results
-  docs/         economic specs, term sheets, and model notes
-  README.md
