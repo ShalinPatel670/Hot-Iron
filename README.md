@@ -1,167 +1,133 @@
-# Green Carbon Auction Desk
+**Hot Iron
+**
+A market-design platform for auctioning green-steel production capacity and converting low volatility into cheaper financing.
 
-A responsive web application for industrial buyers to bid on low-carbon steel and arrange trade finance for those purchases.
+Hot Iron is an applied-economics + systems project exploring how to use auction design, ESG-linked lending, and volatility-based financing models to lower the real cost of green steel.
+The core idea: green steel is structurally lower-volatility than conventional HRC, and that stability can be monetized through cheaper debt. Hot Iron prototypes the architecture, math, and mechanisms required to deliver that value to buyers, suppliers, and lenders.
 
-## Design Philosophy
+1. Problem
 
-This application blends **Russian Constructivism** (bold geometry, diagonals, strong typography, limited palette) with **Apple-style glassmorphism** (frosted translucent surfaces, subtle blur, soft depth). The UI is designed to feel like a serious trading terminal for sustainability teams.
+Steel buyers want predictable pricing.
+Steel suppliers need liquidity.
+Lenders want low-risk, ESG-positive deals.
 
-### Visual Language
+Today’s green-steel market has:
 
-- **Color Palette:**
-  - Base background: Near-black `#05060A` with subtle vertical gradient
-  - Primary foreground: Soft off-white `#F5F5F7`
-  - Accent 1 (Constructivist Red): `#FF3B30` for primary CTAs
-  - Accent 2 (Carbon Green): `#3DD68C` for green steel metrics
+High capital intensity (e.g., $1.5M per MW electrolyzer CAPEX)
 
-- **Typography:** Modern grotesk sans-serif (Inter/SF Pro/system UI) with uppercase page titles and oversized KPI numbers
+Opaque pricing and thin liquidity
 
-- **Layout:** Persistent left sidebar, two- and three-column grids, constructivist diagonals, and glassmorphism effects
+Weak alignment between buyers, mills, and project-finance lenders
 
-## Tech Stack
+No infrastructure for forward capacity commitments or standardized commercial terms
 
-- **Frontend:**
-  - React 18 with TypeScript
-  - Vite for build tooling
-  - Tailwind CSS for styling
-  - React Router for navigation
+As a result, buyers pay a premium, suppliers face financing gaps, and lenders can’t reliably underwrite long-term contracts.
 
-- **Backend:**
-  - Python 3.8+
-  - FastAPI for REST API
-  - Pydantic for data validation
+2. Hot Iron’s Approach
 
-## Getting Started
+Hot Iron introduces a single platform for auctioning production capacity, bundling:
 
-### Prerequisites
+Time on the manufacturing line
+Buyers bid for deliverable slots—matching what suppliers actually know they can produce.
 
-- Node.js 18+ and npm/yarn/pnpm
-- Python 3.8+ (for backend)
+A standardized term-sheet package
+Incoterms, payment schedule, insurance, and delivery specs are pre-baked so auctions clear without protracted negotiation.
 
-### Backend Setup
+This structure mirrors the equipment-financing model used in other industrial markets but applies it to steel.
 
-1. Install Python dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
-```
+3. Financing Model (Core Insight)
 
-2. Start the backend server:
-```bash
-uvicorn backend.server:app --reload --port 8000
-```
+Green steel exhibits significantly lower spot and futures volatility than traditional steel.
+Lower volatility → lower perceived credit risk → lower cost of debt.
 
-The API will be available at `http://localhost:8000`
+We convert that into explicit savings:
 
-See `backend/README.md` for detailed API documentation.
+Debt per ton
+Debt/Ton
+=
+0.7
+×
+(
+100
+ MW
+×
+$
+1.5
+M/MW
+)
+15,200
+ tons/year
+≈
+$
+6,908
+/
+ton
+Debt/Ton=
+15,200 tons/year
+0.7×(100 MW×$1.5M/MW)
+	​
 
-### Frontend Setup
+≈$6,908/ton
+Financing Savings
+Savings/Ton
+≈
+(
+Debt/Ton
+)
+×
+Δ
+𝑟
+×
+9.11
++
+54
+Savings/Ton≈(Debt/Ton)×Δr×9.11+54
 
-1. Install dependencies:
-```bash
-npm install
-```
+Typical Δr values yield $200–$300/ton in interest savings.
 
-2. Create a `.env` file (optional, defaults to `http://localhost:8000`):
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-```
+These savings become shared upside for buyers and suppliers participating in the auction.
 
-3. Start the development server:
-```bash
-npm run dev
-```
+4. Auction Design
 
-4. Open your browser to `http://localhost:5173`
+The auction matches:
 
-### Build for Production
+Buyers: post project spec (tons, grades, delivery windows)
 
-```bash
-npm run build
-```
+Suppliers/OEMs: commit capacity only for what they can deliver
 
-The built files will be in the `dist` directory.
+Lenders: provide pre-committed term sheets at known spreads based on risk classification
 
-## Project Structure
+Clearing objective:
+maximize supplier utilization, minimize buyer cost, maintain lender IRR targets.
 
-```
-├── backend/              # Python FastAPI backend
-│   ├── models.py        # Data models (Point, Seller, Bid)
-│   ├── auction.py       # Auction logic
-│   ├── server.py        # FastAPI application
-│   └── requirements.txt # Python dependencies
-├── src/
-│   ├── components/       # Reusable UI components
-│   ├── pages/           # Page components
-│   ├── context/         # React contexts (Notifications, AuctionData)
-│   ├── lib/             # API client and utilities
-│   ├── types/           # TypeScript type definitions
-│   ├── data/            # Mock data (legacy)
-│   ├── App.tsx          # Main app component with routing
-│   └── main.tsx         # Entry point
-└── pricingformula.py    # Original pricing logic (legacy)
-```
+Hot Iron simulates this across heterogeneous demand and supply distributions.
 
-## Features
+5. System Architecture
 
-- **Dashboard:** Overview of cost vs carbon position with KPIs and recent activity from auction runs
-- **Auction:** Run reverse auctions with buyer location and quantity inputs. View winner and full bid book
-- **My Orders:** Track executed purchases derived from auction results with detailed order information
-- **Loans:** View trade finance options linked to auction results
-- **Analytics:** Historical analysis of CO₂ savings and green premium metrics from auction history
-- **My Account:** Organization profile, team management, and notification settings
+Hot Iron includes:
 
-## Backend Integration
+🧮 Quant/Modeling Layer
 
-The frontend communicates with the FastAPI backend to:
-- Run reverse auctions with buyer location and quantity
-- Retrieve seller information
-- Get detailed bid breakdowns including transport modes, discounts, and pricing
+Stochastic simulation of steel price paths
 
-### Known Addresses
+ESG-spread modeling
 
-The backend geocoder supports these demo addresses:
-- "central us warehouse" (Chicago)
-- "chicago, il"
-- "pittsburgh, pa"
+Debt-amortization curves
 
-Or provide latitude/longitude coordinates directly.
+Auction clearing algorithm (variant of multi-unit uniform-price auction with capacity constraints)
 
-### API Endpoints
+📦 Data Layer
 
-- `GET /health` - Health check
-- `GET /sellers` - List available sellers
-- `POST /auction/run` - Run reverse auction with request body:
-  ```json
-  {
-    "buyer_address": "chicago, il",  // Optional
-    "lat": 41.8781,                  // Optional
-    "lon": -87.6298,                 // Optional
-    "quantity_tons": 10000
-  }
-  ```
+Historical HRC/green-steel volatility datasets
 
-## Responsive Design
+Capacity, ramp rate, and delivery-window priors
 
-The application is fully responsive:
-- **Desktop:** Full sidebar navigation, multi-column layouts
-- **Tablet:** Collapsible sidebar, stacked layouts
-- **Mobile:** Hamburger menu, single-column layouts, slide-in drawer navigation
+Term-sheet and financing assumptions
 
-## Browser Support
+⚙️ Application Layer
 
-Modern browsers that support:
-- ES2020+
-- CSS Grid and Flexbox
-- CSS backdrop-filter (for glassmorphism effects)
+Auction engine
 
-## Development Notes
+Deal-packaging module (slots + standardized terms)
 
-- Auction results are persisted in localStorage for demo continuity
-- Orders are automatically created from successful auction runs
-- Analytics metrics are computed from auction history
-- Loan recommendations are generated based on latest auction results
-
-## License
-
-This project is a demo application.
+Reporting for buyer cost, supplier margin, lender IRR
